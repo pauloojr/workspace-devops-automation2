@@ -41,6 +41,12 @@ jobs:
           terraform validate
           terraform plan -out=tfplan
 
+          terraform plan -out=tfplan || exit_code=$?
+          if [ $exit_code -ne 0 ] && [ $exit_code -ne 3 ]; then
+            echo "Terraform plan falhou com erro real: exit code $exit_code"
+            exit $exit_code
+          fi
+
   deploy:
     if: ${{ github.event.inputs.destroy == 'false' || github.event.inputs.destroy == false }}
     name: Deploy e Configuração
