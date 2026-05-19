@@ -164,6 +164,8 @@ jobs:
 
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Executar Terraform Destroy
         working-directory: infra
