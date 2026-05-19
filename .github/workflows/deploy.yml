@@ -93,10 +93,11 @@ jobs:
           echo "nsg_name=$(terraform output -raw nsg_name)" >> $GITHUB_OUTPUT
           echo "resource_group=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
 
-      - name: Instalar Ansible e sshpass
+      - name: Instalar Ansible, sshpass e collection Docker
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible sshpass
+          ansible-galaxy collection install community.docker
 
       - name: Executar Playbook Ansible
         run: |

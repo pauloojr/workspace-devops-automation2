@@ -42,8 +42,9 @@
         name: docker
         state: started
         enabled: yes
+
     - name: Executar container da aplicação Java
-      docker_conatiner:
+      community.docker.docker_container:
         name: java-api
         image: iesodias/java-api:latest
         state: started
