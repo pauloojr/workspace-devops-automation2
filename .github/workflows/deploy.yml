@@ -30,7 +30,7 @@ jobs:
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_wrapper: false # <--- CORRIGIDO: Faltava isso aqui para não travar no Code 3!
+          terraform_wrapper: false
         
       - name: Validar Sintaxe e Plano
         working-directory: infra
@@ -64,7 +64,7 @@ jobs:
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_wrapper: false # <--- ADICIONADO: Garante que o deploy também não intercepte saídas falsas do binário
+          terraform_wrapper: false
 
       - name: Aplicar Terraform
         working-directory: infra
