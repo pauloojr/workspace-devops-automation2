@@ -41,7 +41,7 @@ jobs:
 
           terraform init
 
-          terraform fmt -check
+          terraform fmt -recursive
 
           terraform validate
 
