@@ -14,10 +14,12 @@ permissions:
   contents: read
 
 jobs:
+
   validate:
     if: ${{ github.event.inputs.destroy == 'false' || github.event.inputs.destroy == false }}
     name: Validar Terraform
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -31,33 +33,33 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-        
+
       - name: Validar Sintaxe e Plano
         working-directory: infra
         run: |
           export ARM_SUBSCRIPTION_ID=${{ secrets.ARM_SUBSCRIPTION_ID }}
-          terraform init
-          terraform fmt -check
-          terraform validate
-          terraform plan -out=tfplan
 
-          terraform plan -out=tfplan || exit_code=$?
-          if [ $exit_code -ne 0 ] && [ $exit_code -ne 3 ]; then
-            echo "Terraform plan falhou com erro real: exit code $exit_code"
-            exit $exit_code
-          fi
+          terraform init
+
+          terraform fmt -check
+
+          terraform validate
+
+          terraform plan -out=tfplan
 
   deploy:
     if: ${{ github.event.inputs.destroy == 'false' || github.event.inputs.destroy == false }}
     name: Deploy e Configuração
     needs: validate
     runs-on: ubuntu-latest
+
     outputs:
       vmName: ${{ steps.output_vm.outputs.vm_name }}
       adminUsername: ${{ steps.output_vm.outputs.admin_username }}
       publicIP: ${{ steps.output_vm.outputs.public_ip }}
       nsgName: ${{ steps.output_vm.outputs.nsg_name }}
       resourceGroup: ${{ steps.output_vm.outputs.resource_group }}
+
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -66,7 +68,7 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
+
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -76,7 +78,9 @@ jobs:
         working-directory: infra
         run: |
           export ARM_SUBSCRIPTION_ID=${{ secrets.ARM_SUBSCRIPTION_ID }}
+
           terraform init
+
           terraform apply -auto-approve
 
       - name: Capturar Outputs
@@ -97,19 +101,27 @@ jobs:
       - name: Executar Playbook Ansible
         run: |
           echo "[vm]" > inventory
-          echo "${{ steps.output_vm.outputs.public_ip }} ansible_user=${{ steps.output_vm.outputs.admin_username }} ansible_password='${{ secrets.ADMIN_PASSWORD }}' ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> inventory
-          ansible-playbook -i inventory ansible/playbook.yml --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"
+
+          echo "${{ steps.output_vm.outputs.public_ip }} \
+          ansible_user=${{ steps.output_vm.outputs.admin_username }} \
+          ansible_password='${{ secrets.ADMIN_PASSWORD }}' \
+          ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> inventory
+
+          ansible-playbook -i inventory ansible/playbook.yml \
+          --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"
 
   post-tests:
     if: ${{ github.event.inputs.destroy == 'false' || github.event.inputs.destroy == false }}
     name: Pós-Testes de Infra
     needs: deploy
     runs-on: ubuntu-latest
+
     env:
       PUBLIC_IP: ${{ needs.deploy.outputs.publicIP }}
       VM_NAME: ${{ needs.deploy.outputs.vmName }}
       NSG_NAME: ${{ needs.deploy.outputs.nsgName }}
       RESOURCE_GROUP: ${{ needs.deploy.outputs.resourceGroup }}
+
     steps:
       - name: Login no Azure
         uses: azure/login@v2
@@ -118,15 +130,18 @@ jobs:
 
       - name: Testar Swagger na Porta 8081
         run: |
-          echo "Aguardando aplicação subir com Swagger..."
+          echo "Aguardando aplicação subir..."
           sleep 45
-          response=$(curl -s -o /dev/null -w "%{http_code}" http://$PUBLIC_IP:8081/swagger-ui/index.html || echo "000")
+
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+          http://$PUBLIC_IP:8081/swagger-ui/index.html || echo "000")
+
           if [ "$response" != "200" ]; then
-            echo "Swagger não respondeu como esperado. Status HTTP: $response"
+            echo "Swagger não respondeu corretamente. HTTP: $response"
             exit 1
-          else
-            echo "Swagger disponível em /swagger-ui/index.html na porta 8081!"
           fi
+
+          echo "Swagger funcionando com sucesso!"
 
       - name: Verificar status da VM
         run: |
@@ -135,15 +150,15 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --query "instanceView.statuses[?code=='PowerState/running'].displayStatus" \
             --output tsv)
-          
+
           echo "Status da VM: $status"
-          
+
           if [ "$status" != "VM running" ]; then
-            echo "A VM não está em execução!"
+            echo "VM não está rodando!"
             exit 1
-          else
-            echo "VM está rodando com sucesso!"
           fi
+
+          echo "VM rodando corretamente!"
 
       - name: Verificar regra da NSG para porta 8081
         run: |
@@ -151,18 +166,19 @@ jobs:
             --nsg-name "$NSG_NAME" \
             --resource-group "$RESOURCE_GROUP" \
             --query "[?destinationPortRange=='8081' && access=='Allow']")
-          
+
           if [ "$result" = "[]" ] || [ -z "$result" ]; then
-            echo "Porta 8081 não está liberada na NSG!"
+            echo "Porta 8081 NÃO está liberada!"
             exit 1
-          else
-            echo "Porta 8081 está liberada corretamente na NSG!"
           fi
+
+          echo "Porta 8081 liberada corretamente!"
 
   destroy:
     if: ${{ github.event.inputs.destroy == 'true' || github.event.inputs.destroy == true }}
     name: Destruir Infraestrutura
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -181,5 +197,7 @@ jobs:
         working-directory: infra
         run: |
           export ARM_SUBSCRIPTION_ID=${{ secrets.ARM_SUBSCRIPTION_ID }}
+
           terraform init
+
           terraform destroy -auto-approve
