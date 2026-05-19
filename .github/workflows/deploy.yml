@@ -81,7 +81,7 @@ jobs:
 
           terraform init
 
-          terraform apply -auto-approve
+          terraform apply -auto-approve -var="admin_password=${{ secrets.ADMIN_PASSWORD }}"
 
       - name: Capturar Outputs
         id: output_vm
